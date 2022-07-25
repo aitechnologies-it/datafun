@@ -1,0 +1,76 @@
+{
+    "size": 500,
+    "sort": [
+      {
+        "messages.date": {
+          "order": "desc",
+          "unmapped_type": "boolean"
+        }
+      }
+    ],
+    "version": true,
+    "aggs": {
+      "2": {
+        "date_histogram": {
+          "field": "messages.date",
+          "calendar_interval": "1d",
+          "time_zone": "GMT",
+          "min_doc_count": 1
+        }
+      }
+    },
+    "fields": [
+      {
+        "field": "messages.date",
+        "format": "date_time"
+      }
+    ],
+    "script_fields": {},
+    "stored_fields": [
+      "_id",
+      "_index",
+      "_score",
+      "_source",
+      "_type",
+      "messages.date",
+      "messages.message",
+      "messages.message.keyword",
+    ],
+    "runtime_mappings": {},
+    "_source": {
+      "excludes": []
+    },
+    "query": {
+      "bool": {
+        "must": [],
+        "filter": [
+          {
+            "match_all": {}
+          },
+          {
+            "range": {
+              "messages.date": {
+                "gte": "AAA",
+                "lte": "AAA",
+                "format": "strict_date_optional_time"
+              }
+            }
+          }
+        ],
+        "should": [],
+        "must_not": []
+      }
+    },
+    "highlight": {
+      "pre_tags": [
+        "@kibana-highlighted-field@"
+      ],
+      "post_tags": [
+        "@/kibana-highlighted-field@"
+      ],
+      "fields": {
+        "*": {}
+      },
+      "fragment_size": 2147483647
+    }
+  }
