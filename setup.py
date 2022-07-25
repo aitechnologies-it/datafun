@@ -4,9 +4,6 @@ import setuptools
 with open("./README.md", "r") as f:
     long_description = f.read()
 
-with open('requirements.txt') as f:
-    required = f.read().splitlines()
-
 setup(
     name="datafun",
     version="0.1",
@@ -24,5 +21,11 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.8',
-    install_requires=[required]
+    install_requires=[
+        "backoff",
+        "pydlib",
+        "tqdm",
+        "google-cloud-storage",
+        "elasticsearch<8"
+    ]
 )
