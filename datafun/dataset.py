@@ -85,6 +85,7 @@ class StreamedFunctionBiDirectional(StreamedFunction, ABC):
         return self.predecessor.root()
 
     def summary(self) -> List[Tuple[Optional[str], str]]:
+        # TODO: support summary for join
         R = self.root()
         N = R
         nodes = [(R.name, R.__class__.__name__)]
@@ -149,6 +150,52 @@ class Dataset(ProcessingNodeSequential):
     def __len__(self) -> int:
         raise NotImplementedError()
 
+    @staticmethod
+    def _is_primitive(thing):
+        return isinstance(thing, (int, float, str))
+
+    def __add__(self, other: Union[Dataset, int, float, str]):
+        if not isinstance(other, Dataset) and not self._is_primitive(other):
+            raise TypeError(f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'")
+
+        if self._is_primitive(other):
+            return self.map(f=lambda x: x + other, name="map_+")
+        else:
+            return self.zip(other, name="zip_+").map(lambda x: x[0]+x[1])
+
+    def __sub__(self, other: Union[Dataset, int, float, str]):
+        if isinstance(other, str):
+            raise TypeError(f"unsupported operand type(s) for -: '{type(self)}' and '{type(other)}'")
+        if not isinstance(other, Dataset) and not self._is_primitive(other):
+            raise TypeError(f"unsupported operand type(s) for -: '{type(self)}' and '{type(other)}'")
+
+        if self._is_primitive(other):
+            return self.map(f=lambda x: x - other, name="map_-")
+        else:
+            return self.zip(other, name="zip_-").map(lambda x: x[0]-x[1])
+
+    def __truediv__(self, other: Union[Dataset, int, float, str]):
+        if isinstance(other, str):
+            raise TypeError(f"unsupported operand type(s) for /: '{type(self)}' and '{type(other)}'")
+        if not isinstance(other, Dataset) and not self._is_primitive(other):
+            raise TypeError(f"unsupported operand type(s) for /: '{type(self)}' and '{type(other)}'")
+
+        if self._is_primitive(other):
+            return self.map(f=lambda x: x / other, name="map_/")
+        else:
+            return self.zip(other, name="zip").map(lambda x: x[0]/x[1])
+
+    def __mul__(self, other: Union[Dataset, int, float, str]):
+        if isinstance(other, str):
+            raise TypeError(f"unsupported operand type(s) for *: '{type(self)}' and '{type(other)}'")
+        if not isinstance(other, Dataset) and not self._is_primitive(other):
+            raise TypeError(f"unsupported operand type(s) for *: '{type(self)}' and '{type(other)}'")
+
+        if self._is_primitive(other):
+            return self.map(f=lambda x: x * other, name="map_*")
+        else:
+            return self.zip(other, name="zip").map(lambda x: x[0]*x[1])
+
     def __iter__(self) -> Generator:
         raise NotImplementedError()
 
@@ -170,7 +217,10 @@ class Dataset(ProcessingNodeSequential):
     def take_while(self, f: Callable[..., bool]) -> List:
         raise NotImplementedError()
 
-    def clone(self, **kwargs) -> Dataset:
+    def clone(self) -> Dataset:
+        raise NotImplementedError()
+
+    def replicate(self) -> DatasetNode:
         raise NotImplementedError()
 
     def add_successor(self, successor_class: Type[DatasetNode], **kwargs) -> DatasetNode:
@@ -202,6 +252,17 @@ class Dataset(ProcessingNodeSequential):
 
     def limit(self, n: int, name: str = 'limit') -> DatasetNode:
         return self.add_successor(Limit, n=n, name=name)
+
+    def join(self, other: Dataset,
+        key_left: Optional[Callable] = None, key_right: Optional[Callable] = None, key: Optional[Callable] = None,
+        name: str = 'join'
+    ) -> JoinDatasetSource:
+        # TODO: add support for name in JoinDatasetSource
+        return JoinDatasetSource(x=self, y=other, key_x=key_left, key_y=key_right, key=key, config=EmptyConfig())
+
+    def zip(self, *iterables, name: str = 'zip') -> ZipDatasetSource:
+        # TODO: add support for name in ZipDatasetSource
+        return ZipDatasetSource(self, *iterables, config=EmptyConfig())
 
 
 class DatasetSource(Dataset):
@@ -306,10 +367,96 @@ class DatasetSource(Dataset):
         return examples
 
     def clone(self) -> DatasetSource:
+        return self.replicate()
+
+    def replicate(self):
         return self.__class__(config=self.config, successor=None)
 
     def _generate_examples(self) -> Generator:
         raise NotImplementedError()
+
+
+class JoinDatasetSource(DatasetSource):
+    def __init__(
+        self,
+        config: Any,
+        x: Dataset,
+        y: Dataset,
+        key_x: Optional[Callable] = None,
+        key_y: Optional[Callable] = None,
+        key: Optional[Callable] = None,
+        **kwargs
+    ):
+        super().__init__(config=config, **kwargs)
+        self.x = x.clone()
+        self.y = y.clone()
+        if not isinstance(x, Dataset):
+            raise TypeError("JoinDatasetSource: Argument x is not a Dataset")
+        if not isinstance(y, Dataset):
+            raise TypeError("JoinDatasetSource: Argument y is not a Dataset")
+        if key is not None and (key_x is not None or key_y is not None):
+            raise ValueError("JoinDatasetSource: either key or (key_x and key_y) must be specified")
+        if key is not None:
+            if not isinstance(key, Callable):
+                raise TypeError(f"JoinDatasetSource: Argument key is not a function")
+        else:
+            if not isinstance(key_x, Callable):
+                raise TypeError(f"JoinDatasetSource: Argument key_x is not a function")
+            if not isinstance(key_y, Callable):
+                raise TypeError(f"JoinDatasetSource: Argument key_y is not a function")
+        if key is not None:
+            self.key_x = key
+            self.key_y = key
+        else:
+            self.key_x = key_x
+            self.key_y = key_y
+        self.joined = {}
+
+    def dataset_name(self):
+        return "join"
+
+    def _generate_examples(self) -> Generator[dict, None, None]:
+        for data in self.x:
+            self._join(data, self.key_x)
+        for data in self.y:
+            self._join(data, self.key_y)
+        joined_data = self.joined
+        self.joined = None
+        yield joined_data
+
+    def _join(self, data: Any, key_fn: Callable):
+        key = key_fn(data)
+        if key not in self.joined:
+            self.joined[key] = []
+        self.joined[key].append(data)
+
+
+class ZipDatasetSource(DatasetSource):
+    def __init__(
+        self,
+        *iterables,
+        config: Any,
+        **kwargs
+    ):
+        super().__init__(config=config, **kwargs)
+        if not all(isinstance(ds, Dataset) for ds in iterables):
+            raise TypeError("ZipDatasetSource: One of the given iterables is not a Dataset")
+        self.iterables = iterables
+
+    def dataset_name(self):
+        return "zip"
+
+    def replicate(self) -> ZipDatasetSource:
+        return ZipDatasetSource(
+            *self.iterables,
+            config=self.config,
+            successor=self.successor,  # type: ignore
+            meta=self.meta,
+        )
+
+    def _generate_examples(self) -> Generator[tuple, None, None]:
+        for data_tuple in zip(*self.iterables):
+            yield data_tuple
 
 
 @dataclass
@@ -409,8 +556,6 @@ class DatasetNode(Dataset):
             replica.predecessor.successor = replica
         return replica
 
-    def replicate(self) -> DatasetNode:
-        raise NotImplementedError()
 
 @dataclass
 class Filter(DatasetNode):

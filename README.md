@@ -19,8 +19,8 @@ With datafun you can:
 
 - Load files locally from specific file formats, eg. CSV, JSON etc.
 - Load files from remote sources, eg. a CSV or a JSON from a Google Cloud Storage bucket.
-- Create new datasets on the fly by loading a file format and then applying some transformations (filter, map...) to it.
-- Create new datasets by extending the DatasetSource class. This way allows to add more complex behaviours. This will also contribute to the library, as the new datasets will be available to anyone.
+- Apply streaming transformations on the fly by applying functional operations (filter, map...) to it.
+- Define data transformations to be stored and later used and extended by anyone. This will contribute to an internal hub of common datasets and pipelines used many times.
 
 # Architecture
 
@@ -64,7 +64,11 @@ This is what happens when you begin iterating over the stream:
 | sampling  | p: float, seed: int                                                               | Samples elements according to the sampling ratio **p**: `0. < p <= 1.`                                                                                                                                                                                                                                                                                   |
 | unique    | by: Callable[T, U]                                                                | Removes duplicates. **by** argument specifies a function that extracts the desired information                                                                                                                                                                                                                                                           |
 | aggregate | init: Callable[[], S] <br> agg: Callable[[T, S], S] <br> reduce: Callable[[S], R] | Aggregates stream using function **f**. Hint: given initial value **init** of type **S** for <br> aggregated stream, maps **f** to stream (**value**: **T**, **aggregated**: **S**) where **value** is an <br> element of the stream, and **aggregated** is the current aggregate value. <br> **reduce** is applied to the aggregated value, if provided |
+| zip       | *iterables                                                                        | Zips elements from multiple dataset, like python zip()                                                                                                                                                                                                                                                                                                   |
+| join      | other: Dataset, key: Callable, key_left: Callable, key_right: Callable            | Joins two datasets based on provided key functions that specify the path in the dictionary. Either specify **key** for both, or **key_left** and **key_right**.                                                                                                                                                                                          |
 | limit     | n: int                                                                            | Limits the number of elements in the streams to the first **n**                                                                                                                                                                                                                                                                                          |
+
+Datasets overloads basic python operations: ```+```, ```-```, ```*```, ```/```.
 
 You can see examples for every operation in the [dedicated notebook](./examples/operations.ipynb).
 
@@ -110,13 +114,13 @@ for el in ds:
 ```python
 ds = dfn.load(range(N))
 
-ds.show(5) # Show first 5 integers
+ds.take(5) # take first 5 integers
 >> [0, 1, 2, 3, 4]
 ```
 
 ## Adding ops to the pipeline, evaluated lazily when generating data
 ```python
-ds = datasets.load('json', path="path/to/file.json")
+ds = dfn.load('json', path="path/to/file.json")
 
 ds2 = ds.filter(lambda x: x['KEY'] > 10)
 ds2 = ds2.map(lambda x: x**2)
@@ -126,6 +130,20 @@ print(ds2.summary()) # Shows pipeline ops
 for el in ds2:
     # do something with el.
     # This will execute the defined ops one element at a time
+```
+
+## Easy streaming transformation of remote dataset!
+```python
+# Streaming normalize on the fly
+ds = (
+    dfn
+    .load('gcs-jsonl', path='gs://my_bucket/timeseries.jsonl')
+    .map(lambda x: x['value'])
+)
+mean = 3.14 # let's assume to have a mean
+norm_ds = ds - mean
+for value in norm_ds:
+    print(value)
 ```
 
 You can see examples for every operation in the [dedicated notebook](./examples/operations.ipynb).
