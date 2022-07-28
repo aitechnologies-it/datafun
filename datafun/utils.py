@@ -2,6 +2,9 @@ import time
 from tqdm import tqdm
 import atexit
 
+class UnrecognizedDatasetError(Exception):
+    pass
+
 class ProgressBar():
     def __init__(self, update_interval_sec: float = 0.5):
         self.update_interval_sec = update_interval_sec
