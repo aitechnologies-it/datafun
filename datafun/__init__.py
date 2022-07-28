@@ -85,5 +85,5 @@ def load(dataset_name_or_iterable: Union[str, Iterable], path: Union[List[str], 
         return IterableDataset(dataset_name_or_iterable)
 
 
-def list() -> List[str]:
-    return sorted(DATASETS.keys())
+def list_datasets() -> List[str]:
+    return sorted(list(DATASETS.keys()))
