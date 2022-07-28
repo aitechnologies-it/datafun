@@ -1,4 +1,4 @@
-# 🍻 datafun
+# 🍻 datafun [![Downloads](https://pepy.tech/badge/datafun)](https://pepy.tech/project/datafun)
 
 The datafun allows for loading existing datasets or files with different formats and treat them as streaming pipelines. It also allows one to add operations like filter and map in a functional way executed lazily while loading data.
 
