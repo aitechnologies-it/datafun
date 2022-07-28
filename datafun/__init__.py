@@ -34,6 +34,7 @@ from .base_datasets import (
     RESTDataset,
     RESTDatasetConfig,
 )
+from .utils import UnrecognizedDatasetError
 
 DATASETS = {
     'text': TextDataset,
@@ -73,9 +74,9 @@ def load(dataset_name_or_iterable: Union[str, Iterable], path: Union[List[str], 
         if path is None:
             raise ValueError('You must specify the argument path')
         if dataset_name_or_iterable not in DATASETS:
-            raise ValueError(f"Dataset {dataset_name_or_iterable} not found. Available: {DATASETS.keys()}")
+            raise UnrecognizedDatasetError(f"Dataset {dataset_name_or_iterable} not found. Available: {list(DATASETS.keys())}")
         if dataset_name_or_iterable not in CONFIGS:
-            raise ValueError(f"Config for dataset {dataset_name_or_iterable} not found. Available: {CONFIGS.keys()}")
+            raise UnrecognizedDatasetError(f"Config for dataset {dataset_name_or_iterable} not found. Available: {list(CONFIGS.keys())}")
         config = CONFIGS[dataset_name_or_iterable](path=path, **kwargs)
         return DATASETS[dataset_name_or_iterable](config=config)
 
