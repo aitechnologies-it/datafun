@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import random
 from typing import (
-    Callable, Type, Any, List, Sequence, Tuple, Generator, Union, Optional
+    Callable, Type, Any, List, Tuple, Generator, Union, Optional
 )
 
 from .utils import ProgressBar
@@ -73,8 +72,8 @@ class StreamedFunctionBiDirectional(StreamedFunction, ABC):
         self.predecessor = predecessor
         self.successor   = successor
 
-    def backward(self, stream: Stream, **kwargs) -> Stream:
-        raise NotImplementedError()
+    # def backward(self, stream: Stream, **kwargs) -> Stream:
+    #     raise NotImplementedError()
 
     def forward(self, stream: Stream, **kwargs) -> Stream:
         raise NotImplementedError()
@@ -94,7 +93,7 @@ class StreamedFunctionBiDirectional(StreamedFunction, ABC):
         return nodes
 
 
-class ProcessingNodeSequential(StreamedFunctionBiDirectional):
+class ProcessingNodeSequential(StreamedFunctionBiDirectional, ABC):
     def __init__(
         self,
         function: Callable,
@@ -116,15 +115,18 @@ class ProcessingNodeSequential(StreamedFunctionBiDirectional):
             return self.successor(stream)
         return stream
 
+
 @dataclass
-class EmptyConfig():
+class EmptyConfig:
     pass
 
+
 @dataclass
-class Config():
+class Config:
     path: Union[List[str], str]
 
-class Dataset(ProcessingNodeSequential):
+
+class Dataset(ProcessingNodeSequential, ABC):
     def __init__(
         self,
         function: Callable,
@@ -220,16 +222,16 @@ class Dataset(ProcessingNodeSequential):
     def clone(self) -> Dataset:
         raise NotImplementedError()
 
-    def replicate(self) -> DatasetNode:
+    def replicate(self) -> Dataset:
         raise NotImplementedError()
 
     def add_successor(self, successor_class: Type[DatasetNode], **kwargs) -> DatasetNode:
         if not issubclass(successor_class, DatasetNode):
             raise TypeError(f"{__class__.__name__}: Successor class must be a Dataset subclass "
-                    f"definition, not {type(successor_class)}.")
+                            f"definition, not {type(successor_class)}.")
 
         new_node = successor_class(predecessor=self.clone(), successor=None, meta=self.meta, **kwargs)
-        new_node.predecessor.successor = new_node # type: ignore # predecessor is me!
+        new_node.predecessor.successor = new_node  # type: ignore # predecessor is me!
         return new_node
 
     def filter(self, f: Callable[..., bool], name: str = 'filter') -> DatasetNode:
@@ -369,98 +371,15 @@ class DatasetSource(Dataset):
     def clone(self) -> DatasetSource:
         return self.replicate()
 
-    def replicate(self):
+    def replicate(self) -> DatasetSource:
         return self.__class__(config=self.config, successor=None)
 
     def _generate_examples(self) -> Generator:
         raise NotImplementedError()
 
 
-class JoinDatasetSource(DatasetSource):
-    def __init__(
-        self,
-        config: Any,
-        x: Dataset,
-        y: Dataset,
-        key_x: Optional[Callable] = None,
-        key_y: Optional[Callable] = None,
-        key: Optional[Callable] = None,
-        **kwargs
-    ):
-        super().__init__(config=config, **kwargs)
-        self.x = x.clone()
-        self.y = y.clone()
-        if not isinstance(x, Dataset):
-            raise TypeError("JoinDatasetSource: Argument x is not a Dataset")
-        if not isinstance(y, Dataset):
-            raise TypeError("JoinDatasetSource: Argument y is not a Dataset")
-        if key is not None and (key_x is not None or key_y is not None):
-            raise ValueError("JoinDatasetSource: either key or (key_x and key_y) must be specified")
-        if key is not None:
-            if not isinstance(key, Callable):
-                raise TypeError(f"JoinDatasetSource: Argument key is not a function")
-        else:
-            if not isinstance(key_x, Callable):
-                raise TypeError(f"JoinDatasetSource: Argument key_x is not a function")
-            if not isinstance(key_y, Callable):
-                raise TypeError(f"JoinDatasetSource: Argument key_y is not a function")
-        if key is not None:
-            self.key_x = key
-            self.key_y = key
-        else:
-            self.key_x = key_x
-            self.key_y = key_y
-        self.joined = {}
-
-    def dataset_name(self):
-        return "join"
-
-    def _generate_examples(self) -> Generator[dict, None, None]:
-        for data in self.x:
-            self._join(data, self.key_x)
-        for data in self.y:
-            self._join(data, self.key_y)
-        joined_data = self.joined
-        self.joined = None
-        yield joined_data
-
-    def _join(self, data: Any, key_fn: Callable):
-        key = key_fn(data)
-        if key not in self.joined:
-            self.joined[key] = []
-        self.joined[key].append(data)
-
-
-class ZipDatasetSource(DatasetSource):
-    def __init__(
-        self,
-        *iterables,
-        config: Any,
-        **kwargs
-    ):
-        super().__init__(config=config, **kwargs)
-        if not all(isinstance(ds, Dataset) for ds in iterables):
-            raise TypeError("ZipDatasetSource: One of the given iterables is not a Dataset")
-        self.iterables = iterables
-
-    def dataset_name(self):
-        return "zip"
-
-    def replicate(self) -> ZipDatasetSource:
-        return ZipDatasetSource(
-            *self.iterables,
-            config=self.config,
-            successor=self.successor,  # type: ignore
-            meta=self.meta,
-        )
-
-    def _generate_examples(self) -> Generator[tuple, None, None]:
-        for data_tuple in zip(*self.iterables):
-            yield data_tuple
-
-
 @dataclass
-class DatasetNode(Dataset):
+class DatasetNode(Dataset, ABC):
     def __init__(
         self,
         function: Callable,
@@ -557,6 +476,89 @@ class DatasetNode(Dataset):
         return replica
 
 
+class JoinDatasetSource(DatasetSource):
+    def __init__(
+        self,
+        config: Any,
+        x: Dataset,
+        y: Dataset,
+        key_x: Optional[Callable] = None,
+        key_y: Optional[Callable] = None,
+        key: Optional[Callable] = None,
+        **kwargs
+    ):
+        super().__init__(config=config, **kwargs)
+        self.x = x.clone()
+        self.y = y.clone()
+        if not isinstance(x, Dataset):
+            raise TypeError("JoinDatasetSource: Argument x is not a Dataset")
+        if not isinstance(y, Dataset):
+            raise TypeError("JoinDatasetSource: Argument y is not a Dataset")
+        if key is not None and (key_x is not None or key_y is not None):
+            raise ValueError("JoinDatasetSource: either key or (key_x and key_y) must be specified")
+        if key is not None:
+            if not isinstance(key, Callable):
+                raise TypeError(f"JoinDatasetSource: Argument key is not a function")
+        else:
+            if not isinstance(key_x, Callable):
+                raise TypeError(f"JoinDatasetSource: Argument key_x is not a function")
+            if not isinstance(key_y, Callable):
+                raise TypeError(f"JoinDatasetSource: Argument key_y is not a function")
+        if key is not None:
+            self.key_x = key
+            self.key_y = key
+        else:
+            self.key_x = key_x
+            self.key_y = key_y
+        self.joined = {}
+
+    def dataset_name(self):
+        return "join"
+
+    def _generate_examples(self) -> Generator[dict, None, None]:
+        for data in self.x:
+            self._join(data, self.key_x)
+        for data in self.y:
+            self._join(data, self.key_y)
+        joined_data = self.joined
+        self.joined = None
+        yield joined_data
+
+    def _join(self, data: Any, key_fn: Callable):
+        key = key_fn(data)
+        if key not in self.joined:
+            self.joined[key] = []
+        self.joined[key].append(data)
+
+
+class ZipDatasetSource(DatasetSource):
+    def __init__(
+        self,
+        *iterables,
+        config: Any,
+        **kwargs
+    ):
+        super().__init__(config=config, **kwargs)
+        if not all(isinstance(ds, Dataset) for ds in iterables):
+            raise TypeError("ZipDatasetSource: One of the given iterables is not a Dataset")
+        self.iterables = iterables
+
+    def dataset_name(self):
+        return "zip"
+
+    def replicate(self) -> ZipDatasetSource:
+        return ZipDatasetSource(
+            *self.iterables,
+            config=self.config,
+            successor=self.successor,  # type: ignore
+            meta=self.meta,
+        )
+
+    def _generate_examples(self) -> Generator[tuple, None, None]:
+        for data_tuple in zip(*self.iterables):
+            yield data_tuple
+
+
 @dataclass
 class Filter(DatasetNode):
     def __init__(
@@ -573,7 +575,7 @@ class Filter(DatasetNode):
             predecessor=predecessor,
             successor=successor,
             meta=meta,
-            name=name, 
+            name=name,
             **kwargs
         )
 
@@ -751,14 +753,14 @@ class Map(DatasetNode):
             raise TypeError(f"Map: Argument function must be a callable, not {type(function)}")
 
         super().__init__(
-            function=function, 
+            function=function,
             predecessor=predecessor,
             successor=successor,
             meta=meta,
-            name=name, 
+            name=name,
             **kwargs
         )
-    
+
     def compute(self, stream: Stream, **kwargs) -> Stream:
         output = self.function(stream.data)
         return self.forward(Stream(data=output))
@@ -788,14 +790,14 @@ class FlatMap(DatasetNode):
             raise TypeError(f"FlatMap: Argument function must be a callable, not {type(function)}")
 
         super().__init__(
-            function=function, 
+            function=function,
             predecessor=predecessor, # type: ignore
             successor=successor, # type: ignore
             meta=meta,
-            name=name, 
+            name=name,
             **kwargs
         )
-    
+
     def compute(self, stream: Stream, **kwargs) -> Generator[Stream, None, Union[PullStream, None]]:
         output = self.function(stream.data)
 
