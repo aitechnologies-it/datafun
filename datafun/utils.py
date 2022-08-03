@@ -1,11 +1,19 @@
+from __future__ import annotations
+
 import time
-from tqdm import tqdm
 import atexit
+import logging
+
+from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
+
 
 class UnrecognizedDatasetError(Exception):
     pass
 
-class ProgressBar():
+
+class ProgressBar:
     def __init__(self, update_interval_sec: float = 0.5):
         self.update_interval_sec = update_interval_sec
         self.pbar = None
@@ -74,3 +82,9 @@ class ProgressBar():
             self.pbar.close()
             self.pbar = None
             atexit.unregister(self.close)
+
+
+def _backoff_hdlr(details):
+    logger.info("Backing off {wait:0.1f} seconds after {tries} tries "
+                "calling function {target} with args {args} and kwargs "
+                "{kwargs}".format(**details))
