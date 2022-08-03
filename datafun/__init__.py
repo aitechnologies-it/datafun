@@ -7,10 +7,8 @@ from .dataset import (
     StartOfStream,
     EndOfStream,
 )
-from .base_datasets import (
+from .sources import (
     IterableDataset,
-    JSONDataset,
-    JSONLinesDataset,
     TextDataset,
     TextDatasetConfig,
     CSVDataset,
@@ -19,20 +17,22 @@ from .base_datasets import (
     JSONDatasetConfig,
     JSONLinesDataset,
     JSONLinesDatasetConfig,
-    GCSDataset,
-    GCSDatasetConfig,
-    GCSTextDataset,
-    GCSTextDatasetConfig,
-    GCSCSVDataset,
-    GCSCSVDatasetConfig,
-    GCSJSONDataset,
-    GCSJSONDatasetConfig,
-    GCSJSONLinesDataset,
-    GCSJSONLinesDatasetConfig,
-    ELKDataset,
-    ELKDatasetConfig,
-    RESTDataset,
+)
+from .sources import (
     RESTDatasetConfig,
+    RESTDataset,
+    ELKDatasetConfig,
+    ELKDataset,
+    GCSDatasetConfig,
+    GCSDataset,
+    GCSTextDatasetConfig,
+    GCSTextDataset,
+    GCSCSVDatasetConfig,
+    GCSCSVDataset,
+    GCSJSONDatasetConfig,
+    GCSJSONDataset,
+    GCSJSONLinesDatasetConfig,
+    GCSJSONLinesDataset
 )
 from .utils import UnrecognizedDatasetError
 
@@ -63,6 +63,7 @@ CONFIGS = {
     'elk': ELKDatasetConfig,
     'rest': RESTDatasetConfig,
 }
+
 
 def load(dataset_name_or_iterable: Union[str, Iterable], path: Union[List[str], str, None] = None, **kwargs) -> Dataset:
     if not isinstance(dataset_name_or_iterable, Iterable):
