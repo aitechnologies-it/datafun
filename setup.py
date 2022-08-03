@@ -26,6 +26,7 @@ setup(
         "pydlib",
         "tqdm",
         "google-cloud-storage",
-        "elasticsearch<8"
+        "elasticsearch<8",
+        "requests"
     ]
 )
