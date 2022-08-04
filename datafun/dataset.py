@@ -535,6 +535,17 @@ class JoinDatasetSource(DatasetSource):
             self.joined[key] = []
         self.joined[key].append(data)
 
+    def replicate(self) -> ZipDatasetSource:
+        return JoinDatasetSource(
+            x=self.x,
+            y=self.y,
+            key_x=self.key_x,
+            key_y=self.key_y,
+            config=self.config,
+            successor=self.successor,  # type: ignore
+            meta=self.meta,
+        )
+
 
 class ZipDatasetSource(DatasetSource):
     def __init__(
