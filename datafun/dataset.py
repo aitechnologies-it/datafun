@@ -85,13 +85,15 @@ class StreamedFunctionBiDirectional(StreamedFunction, ABC):
         return self.predecessor.root()
 
     def summary(self) -> List[Tuple[Optional[str], str]]:
-        # TODO: support summary for join
-        R = self.root()
-        N = R
-        nodes = [(R.name, R.__class__.__name__)]
-        while (N := N.successor) is not None:
-            nodes.append((N.name, N.__class__.__name__))
-        return nodes
+        root = self.root()
+        if self == root:
+            curr = root
+            nodes = [(root.name, root.__class__.__name__)]
+            while (curr := curr.successor) is not None:
+                nodes.append((curr.name, curr.__class__.__name__))
+            return nodes
+        else:
+            return root.summary()
 
 
 class ProcessingNodeSequential(StreamedFunctionBiDirectional, ABC):
@@ -520,6 +522,12 @@ class JoinDatasetSource(DatasetSource):
     def dataset_name(self):
         return "join"
 
+    def summary(self) -> List[Tuple[Optional[str], str]]:
+        join_sums = super().summary()
+        sources_sums = tuple((ds.summary() for ds in [self.x, self.y]))
+        join_sums[0] = join_sums[0] + sources_sums
+        return join_sums
+
     def _generate_examples(self) -> Generator[dict, None, None]:
         for data in self.x:
             self._join(data, self.key_x)
@@ -562,6 +570,12 @@ class ZipDatasetSource(DatasetSource):
     def dataset_name(self):
         return "zip"
 
+    def summary(self) -> List[Tuple[Optional[str], str]]:
+        zip_sums = super().summary()
+        iterable_sums = tuple((ds.summary() for ds in self.iterables))
+        zip_sums[0] = zip_sums[0] + iterable_sums
+        return zip_sums
+
     def replicate(self) -> ZipDatasetSource:
         return ZipDatasetSource(
             *self.iterables,
@@ -587,6 +601,9 @@ class CacheDatasetSource(DatasetSource):
 
     def dataset_name(self):
         return "cache"
+
+    def summary(self) -> List[Tuple[Optional[str], str]]:
+        return self.source.summary() + super().summary()
 
     def replicate(self) -> CacheDatasetSource:
         return CacheDatasetSource(
