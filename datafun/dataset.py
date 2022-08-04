@@ -534,7 +534,7 @@ class JoinDatasetSource(DatasetSource):
         for data in self.y:
             self._join(data, self.key_y)
         joined_data = self.joined
-        self.joined = None
+        self.joined = {}
         yield joined_data
 
     def _join(self, data: Any, key_fn: Callable):
