@@ -67,9 +67,9 @@ class ELKDataset(DatasetSource):
                     hits = dl.get(res, 'hits.hits')
                     # keep track of past scroll_id
                     old_scroll_id = dl.get(res, '_scroll_id')
-                except exceptions.NotFoundError as e:
+                except exceptions.NotFoundError:
                     hits = []
-                except exceptions.RequestError as e:
+                except exceptions.RequestError:
                     # _scroll_id is None, because the response is not "paginated"
                     hits = []
 

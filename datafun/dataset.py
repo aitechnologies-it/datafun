@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import random
 from typing import (
-    Callable, Type, Any, List, Tuple, Generator, Union, Optional
+    Callable, Type, Any, List, Tuple, Generator, Union, Optional, Sequence
 )
 
 from .utils import ProgressBar
@@ -543,7 +543,7 @@ class JoinDatasetSource(DatasetSource):
             self.joined[key] = []
         self.joined[key].append(data)
 
-    def replicate(self) -> ZipDatasetSource:
+    def replicate(self) -> JoinDatasetSource:
         return JoinDatasetSource(
             x=self.x,
             y=self.y,

@@ -54,7 +54,7 @@ class ProgressBar:
             self.do_update_pbar_total = True
             self.last_start_time = now
 
-    def create(self, msg:str):
+    def create(self, msg: str):
         self._init_state()
         self.pbar = tqdm(desc=msg, position=0, postfix="total_read=0")
         atexit.register(self.close)
