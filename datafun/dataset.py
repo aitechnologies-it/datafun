@@ -267,6 +267,10 @@ class Dataset(ProcessingNodeSequential, ABC):
         # TODO: add support for name in ZipDatasetSource
         return ZipDatasetSource(self, *iterables, config=EmptyConfig())
 
+    def cache(self, name: str = 'cache') -> CacheDatasetSource:
+        # TODO: add support for name in CacheDatasetSource
+        return CacheDatasetSource(source=self, config=EmptyConfig())
+
 
 class DatasetSource(Dataset):
     def __init__(
@@ -558,6 +562,37 @@ class ZipDatasetSource(DatasetSource):
     def _generate_examples(self) -> Generator[tuple, None, None]:
         for data_tuple in zip(*self.iterables):
             yield data_tuple
+
+
+class CacheDatasetSource(DatasetSource):
+    def __init__(
+        self,
+        source: Dataset,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.source = source
+        self.cached_data = []
+
+    def dataset_name(self):
+        return "cache"
+
+    def replicate(self) -> CacheDatasetSource:
+        return CacheDatasetSource(
+            source=self.source,
+            config=self.config,
+            successor=self.successor,  # type: ignore
+            meta=self.meta,
+        )
+
+    def _generate_examples(self) -> Generator[tuple, None, None]:
+        if self.cached_data == []:
+            for el in self.source:
+                self.cached_data.append(el)
+                yield el
+        else:
+            for el in self.cached_data:
+                yield el
 
 
 @dataclass
