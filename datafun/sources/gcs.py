@@ -114,7 +114,6 @@ class GCSDataset(DatasetSource):
     def clone(self) -> GCSDataset:
         return self.__class__(config=self.config, storage_client=self.storage_client, successor=None)
 
-
     def download_or_cache(self, blob, bucket) -> str:
         cache_outputs: GCPCacheOutput = GCPCache.query(
             cache_dir=self.config.download_path,

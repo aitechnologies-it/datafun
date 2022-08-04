@@ -56,5 +56,3 @@ class Cache:
     @staticmethod
     def update_meta(output: CacheOutput):
         json.dump(output.jsonify(), open(output.metapath, "w"))
-
-
