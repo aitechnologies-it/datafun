@@ -252,18 +252,21 @@ class Dataset(ProcessingNodeSequential, ABC):
     def flat_map(self, f: Callable = lambda x: x, name: str = 'flat_map') -> DatasetNode:
         return self.add_successor(FlatMap, function=f, name=name)
 
-    def aggregate(self, init: Callable, agg: Callable, reduce: Callable = lambda x: x, name: str = 'aggregate') -> DatasetNode:
+    def aggregate(self, init: Callable, agg: Callable, reduce: Callable = lambda x: x,
+        name: str = 'aggregate'
+    ) -> DatasetNode:
         return self.add_successor(Aggregate, init=init, agg=agg, reduce=reduce, name=name)
 
     def limit(self, n: int, name: str = 'limit') -> DatasetNode:
         return self.add_successor(Limit, n=n, name=name)
 
     def join(self, other: Dataset,
-        key_left: Optional[Callable] = None, key_right: Optional[Callable] = None, key: Optional[Callable] = None,
+        key_left: Optional[Callable] = None, key_right: Optional[Callable] = None,
+        key: Optional[Callable] = None, type: str = "outer",
         name: str = 'join'
     ) -> JoinDatasetSource:
         # TODO: add support for name in JoinDatasetSource
-        return JoinDatasetSource(x=self, y=other, key_x=key_left, key_y=key_right, key=key, config=EmptyConfig())
+        return JoinDatasetSource(x=self, y=other, key_x=key_left, key_y=key_right, key=key, type=type, config=EmptyConfig())
 
     def zip(self, *iterables, name: str = 'zip') -> ZipDatasetSource:
         # TODO: add support for name in ZipDatasetSource
@@ -489,6 +492,7 @@ class JoinDatasetSource(DatasetSource):
         config: Any,
         x: Dataset,
         y: Dataset,
+        type: str,
         key_x: Optional[Callable] = None,
         key_y: Optional[Callable] = None,
         key: Optional[Callable] = None,
@@ -501,23 +505,27 @@ class JoinDatasetSource(DatasetSource):
             raise TypeError("JoinDatasetSource: Argument x is not a Dataset")
         if not isinstance(y, Dataset):
             raise TypeError("JoinDatasetSource: Argument y is not a Dataset")
+        _available_type = ['inner', 'full', 'outer', 'left', 'right']
+        if type not in _available_type:
+            raise ValueError(f"JoinDatasetSource: unknown value for type: {type}. Known: {_available_type} (full=outer)")
         if key is not None and (key_x is not None or key_y is not None):
             raise ValueError("JoinDatasetSource: either key or (key_x and key_y) must be specified")
         if key is not None:
             if not isinstance(key, Callable):
-                raise TypeError(f"JoinDatasetSource: Argument key is not a function")
+                raise TypeError("JoinDatasetSource: Argument key is not a function")
         else:
             if not isinstance(key_x, Callable):
-                raise TypeError(f"JoinDatasetSource: Argument key_x is not a function")
+                raise TypeError("JoinDatasetSource: Argument key_x is not a function")
             if not isinstance(key_y, Callable):
-                raise TypeError(f"JoinDatasetSource: Argument key_y is not a function")
+                raise TypeError("JoinDatasetSource: Argument key_y is not a function")
         if key is not None:
             self.key_x = key
             self.key_y = key
         else:
             self.key_x = key_x
             self.key_y = key_y
-        self.joined = {}
+        self.type = type
+        # self.joined = {}
 
     def dataset_name(self):
         return "join"
@@ -529,19 +537,74 @@ class JoinDatasetSource(DatasetSource):
         return join_sums
 
     def _generate_examples(self) -> Generator[dict, None, None]:
-        for data in self.x:
-            self._join(data, self.key_x)
-        for data in self.y:
-            self._join(data, self.key_y)
-        joined_data = self.joined
-        self.joined = {}
+        # for data in self.x:
+        #     self._join(data, self.key_x)
+        # for data in self.y:
+        #     self._join(data, self.key_y)
+        if self.type == "inner":
+            joined_data = self._join_inner()
+        elif self.type in ["outer", "full"]:
+            joined_data = self._join_outer()
+        elif self.type == "left":
+            joined_data = self._join_left()
+        elif self.type == "right":
+            joined_data = self._join_right()
+
+        # joined_data = self.joined
+        # self.joined = {}
         yield joined_data
 
-    def _join(self, data: Any, key_fn: Callable):
+    def _join_outer(self):
+        joined = {}
+        for data in self.x:
+            joined = self._append_anytime(joined, data, self.key_x)
+        for data in self.y:
+            joined = self._append_anytime(joined, data, self.key_y)
+        return joined
+
+    def _join_left(self):
+        joined = {}
+        for data in self.x:
+            joined = self._append_anytime(joined, data, self.key_x)
+        for data in self.y:
+            joined = self._append_if_exist(joined, data, self.key_y)
+        return joined
+
+    def _join_right(self):
+        joined = {}
+        for data in self.y:
+            joined = self._append_anytime(joined, data, self.key_y)
+        for data in self.x:
+            joined = self._append_if_exist(joined, data, self.key_x)
+        return joined
+
+    def _join_inner(self):
+        x_data = {}
+        for data in self.x:
+            x_data = self._append_anytime(x_data, data, self.key_x)
+        joined = {}
+        for data in self.y:
+            # joined = self.intersect(joined, data, self.key_y)
+            key = self.key_y(data)
+            if key in x_data:
+                joined[key] = x_data[key]
+                joined[key].append(data)
+        return joined
+
+    @staticmethod
+    def _append_if_exist(joined: dict, data: Any, key_fn: Callable):
         key = key_fn(data)
-        if key not in self.joined:
-            self.joined[key] = []
-        self.joined[key].append(data)
+        if key in joined:
+            joined[key].append(data)
+        return joined
+
+    @staticmethod
+    def _append_anytime(joined: dict, data: Any, key_fn: Callable):
+        key = key_fn(data)
+        if key not in joined:
+            joined[key] = []
+        joined[key].append(data)
+        return joined
 
     def replicate(self) -> JoinDatasetSource:
         return JoinDatasetSource(
