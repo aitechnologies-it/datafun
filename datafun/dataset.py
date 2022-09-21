@@ -661,6 +661,7 @@ class CacheDatasetSource(DatasetSource):
         super().__init__(**kwargs)
         self.source = source
         self.cached_data = []
+        self.finished = False
 
     def dataset_name(self):
         return "cache"
@@ -677,10 +678,15 @@ class CacheDatasetSource(DatasetSource):
         )
 
     def _generate_examples(self) -> Generator[tuple, None, None]:
+        # Restart called after a keyboard interrupt in the middle of a generation
+        if self.cached_data != [] and self.finished == False:
+            self.cached_data = []
+
         if self.cached_data == []:
             for el in self.source:
                 self.cached_data.append(el)
                 yield el
+            self.finished = True
         else:
             for el in self.cached_data:
                 yield el
