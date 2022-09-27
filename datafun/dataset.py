@@ -613,6 +613,7 @@ class JoinDatasetSource(DatasetSource):
             key_x=self.key_x,
             key_y=self.key_y,
             config=self.config,
+            type=self.type,
             successor=self.successor,  # type: ignore
             meta=self.meta,
         )
