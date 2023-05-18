@@ -26,6 +26,7 @@ class ELKDatasetConfig:
     start_isodate: str
     end_isodate: str
     date_field: str = "@timestamp"
+    date_field_separator: str = "."
 
 
 class ELKDataset(DatasetSource):
@@ -91,12 +92,11 @@ class ELKDataset(DatasetSource):
         if not isinstance(xs, List):
             raise TypeError(f'Field query.bool.filter must be of type List, but found of type {type(xs)}')
 
+        sep = self.config.date_field_separator
         for idx, obj in enumerate(xs):
             if dl.has(obj, "range"):
-                obj["range"][self.config.date_field]["gte"] = self.config.start_isodate
-                obj["range"][self.config.date_field]["lte"] = self.config.end_isodate
-                # obj = dl.update(obj, path=date_field_gte, value=self.config.start_isodate)
-                # obj = dl.update(obj, path=date_field_lte, value=self.config.end_isodate)
+                obj = dl.update(obj, f"range{sep}{self.config.date_field}{sep}gte", value=self.config.start_isodate, sep=sep)
+                obj = dl.update(obj, f"range{sep}{self.config.date_field}{sep}lte", value=self.config.end_isodate, sep=sep)
                 if not obj:
                     raise ValueError(f'{self.config.date_field}.lte or {self.config.date_field}.lte fields can\'t be updated, e.g. check '
                                     'if they exist in the query.')

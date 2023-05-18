@@ -282,6 +282,7 @@ You can see examples for every operation in the [dedicated notebook](./examples/
 | **start_isodate** | str (ISO datetime)    | Yes      |            | Elastic start date range with format: "2021-09-15T10:00:00.000Z" |
 | **end_isodate**   | str (ISO datetime)    | Yes      |            | Elastic end date range with format: "2021-09-15T10:00:00.000Z"   |
 | **date_field**    | str                   | No       | @timestamp | Elastic date field. Can be nested into list, eg. "messages.date" |
+| **date_field_separator** | str            | No       | .          | Separator for date_field used to split the path. Use different ones to NOT split and consider date_field as single field |
 
 **Returned element type**: ```dict```. Each element is a document matching the given query.
 
