@@ -67,6 +67,8 @@ This is what happens when you begin iterating over the stream:
 | zip       | *iterables                                                                        | Zips elements from multiple dataset, like python zip()                                                                                                                                                                                                                                                                                                   |
 | join      | other: Dataset, key: Callable, key_left: Callable, key_right: Callable            | Joins two datasets based on provided key functions that specify the path in the dictionary. Either specify **key** for both, or **key_left** and **key_right**.                                                                                                                                                                                          |
 | limit     | n: int                                                                            | Limits the number of elements in the streams to the first **n**                                                                                                                                                                                                                                                                                          |
+| cache     | /                                                                                 | Caches result of previous nodes into memory. Useful when the pipeline is executed multiple times. Be careful with memory intensive operations.                                                                                                                                                                                                           |
+| repeat    | /                                                                                 | Make the dataset infinite. Be careful that this does NOT cache the loading of data. Usa cache() beforehand if needed.                                                                                                                                                                                                                                    |
 
 Datasets overloads basic python operations: ```+```, ```-```, ```*```, ```/```.
 
@@ -90,10 +92,9 @@ You can see examples for every operation in the [dedicated notebook](./examples/
 
 **Available other operations.**
 
-| name     | Arguments | Description                                                                                                                                    |
-|----------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| cache    | /         | Caches result of previous nodes into memory. Useful when the pipeline is executed multiple times. Be careful with memory intensive operations. |
-| clone    | /         | Deep clone dataset                                                                                                                             |
+| name  | Arguments | Description        |
+|-------|-----------|--------------------|
+| clone | /         | Deep clone dataset |
 
 # Install
 

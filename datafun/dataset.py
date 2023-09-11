@@ -275,6 +275,9 @@ class Dataset(ProcessingNodeSequential, ABC):
     def cache(self, name: str = 'cache') -> CacheDatasetSource:
         # TODO: add support for name in CacheDatasetSource
         return CacheDatasetSource(source=self, config=EmptyConfig())
+    
+    def repeat(self, name: str = 'repeat') -> RepeatDatasetSource:
+        return RepeatDatasetSource(source=self, config=EmptyConfig())
 
 
 class DatasetSource(Dataset):
@@ -690,6 +693,36 @@ class CacheDatasetSource(DatasetSource):
             self.finished = True
         else:
             for el in self.cached_data:
+                yield el
+
+
+class RepeatDatasetSource(DatasetSource):
+    def __init__(
+        self,
+        source: Dataset,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.source = source
+
+    def dataset_name(self):
+        return "repeat"
+
+    def summary(self) -> List[Tuple[Optional[str], str]]:
+        return self.source.summary() + super().summary()
+
+    def _replicate(self) -> RepeatDatasetSource:
+        return RepeatDatasetSource(
+            source=self.source,
+            config=self.config,
+            successor=self.successor,  # type: ignore
+            meta=self.meta,
+        )
+
+    def _generate_examples(self) -> Generator[tuple, None, None]:
+        # Restart called after a keyboard interrupt in the middle of a generation
+        while True:
+            for el in self.source:
                 yield el
 
 
