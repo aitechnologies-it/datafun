@@ -225,7 +225,7 @@ class Dataset(ProcessingNodeSequential, ABC):
     def clone(self) -> Dataset:
         raise NotImplementedError()
 
-    def replicate(self) -> Dataset:
+    def _replicate(self) -> Dataset:
         raise NotImplementedError()
 
     def add_successor(self, successor_class: Type[DatasetNode], **kwargs) -> DatasetNode:
@@ -379,9 +379,9 @@ class DatasetSource(Dataset):
         return examples
 
     def clone(self) -> DatasetSource:
-        return self.replicate()
+        return self._replicate()
 
-    def replicate(self) -> DatasetSource:
+    def _replicate(self) -> DatasetSource:
         return self.__class__(config=self.config, successor=None)
 
     def _generate_examples(self) -> Generator:
@@ -478,7 +478,7 @@ class DatasetNode(Dataset, ABC):
         return dataset.__iter__()
 
     def clone(self) -> DatasetNode:
-        replica: DatasetNode = self.replicate()
+        replica: DatasetNode = self._replicate()
         if self.predecessor is not None:
             p = self.predecessor.clone()  # type: ignore
             replica.predecessor = p
@@ -606,7 +606,7 @@ class JoinDatasetSource(DatasetSource):
         joined[key].append(data)
         return joined
 
-    def replicate(self) -> JoinDatasetSource:
+    def _replicate(self) -> JoinDatasetSource:
         return JoinDatasetSource(
             x=self.x,
             y=self.y,
@@ -640,7 +640,7 @@ class ZipDatasetSource(DatasetSource):
         zip_sums[0] = zip_sums[0] + iterable_sums
         return zip_sums
 
-    def replicate(self) -> ZipDatasetSource:
+    def _replicate(self) -> ZipDatasetSource:
         return ZipDatasetSource(
             *self.iterables,
             config=self.config,
@@ -670,7 +670,7 @@ class CacheDatasetSource(DatasetSource):
     def summary(self) -> List[Tuple[Optional[str], str]]:
         return self.source.summary() + super().summary()
 
-    def replicate(self) -> CacheDatasetSource:
+    def _replicate(self) -> CacheDatasetSource:
         return CacheDatasetSource(
             source=self.source,
             config=self.config,
@@ -721,7 +721,7 @@ class Filter(DatasetNode):
             return self.forward(stream)
         return PullStream()
 
-    def replicate(self) -> Filter:
+    def _replicate(self) -> Filter:
         return Filter(
             function=self.function,
             predecessor=self.predecessor,  # type: ignore
@@ -763,7 +763,7 @@ class Limit(DatasetNode):
             return self.forward(stream)
         return EndOfStream()
 
-    def replicate(self) -> Limit:
+    def _replicate(self) -> Limit:
         return Limit(
             n=self.n,
             predecessor=self.predecessor, # type: ignore
@@ -814,7 +814,7 @@ class Sampling(Filter):
         self._rng = random.Random(self.seed)
         return sos
 
-    def replicate(self) -> Sampling:
+    def _replicate(self) -> Sampling:
         return Sampling(
             p=self.p,
             seed=self.seed,
@@ -862,7 +862,7 @@ class Unique(Filter):
         self.seen = {}
         return eos
 
-    def replicate(self) -> Unique:
+    def _replicate(self) -> Unique:
         return Unique(
             get_field=self.get_field,
             predecessor=self.predecessor, # type: ignore
@@ -899,7 +899,7 @@ class Map(DatasetNode):
         output = self.function(stream.data)
         return self.forward(Stream(data=output))
 
-    def replicate(self) -> Map:
+    def _replicate(self) -> Map:
         return Map(
             function=self.function,
             predecessor=self.predecessor, # type: ignore
@@ -957,7 +957,7 @@ class FlatMap(DatasetNode):
         if isinstance(y, PullStream):
             yield y
 
-    def replicate(self) -> FlatMap:
+    def _replicate(self) -> FlatMap:
         return FlatMap(
             function=self.function,
             predecessor=self.predecessor, # type: ignore
@@ -1016,5 +1016,5 @@ class Aggregate(DatasetNode):
         self.aggregated = None
         return Stream(data=reduced)
 
-    def replicate(self) -> Aggregate:
+    def _replicate(self) -> Aggregate:
         raise ValueError("You cannot add another node in the pipeline after an Aggregate.")
