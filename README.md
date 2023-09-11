@@ -67,7 +67,6 @@ This is what happens when you begin iterating over the stream:
 | zip       | *iterables                                                                        | Zips elements from multiple dataset, like python zip()                                                                                                                                                                                                                                                                                                   |
 | join      | other: Dataset, key: Callable, key_left: Callable, key_right: Callable            | Joins two datasets based on provided key functions that specify the path in the dictionary. Either specify **key** for both, or **key_left** and **key_right**.                                                                                                                                                                                          |
 | limit     | n: int                                                                            | Limits the number of elements in the streams to the first **n**                                                                                                                                                                                                                                                                                          |
-| cache     |                                                                                   | Caches result of previous nodes into memory. Useful when the pipeline is executed multiple times. Be careful with memory intensive operations.                                                                                                                                                                                                           |
 
 Datasets overloads basic python operations: ```+```, ```-```, ```*```, ```/```.
 
@@ -88,6 +87,13 @@ You can see examples for every operation in the [dedicated notebook](./examples/
 | take       | n: int                 | List[T]     | Returns the first n elements of the dataset                                    |
 | take_while | f: Callable[..., bool] | List[T]     | Returns all elements satisfying f                                              |
 | collect    | /                      | List[T]     | Returns a list containing all elements. Also prints progress while collecting. |
+
+**Available other operations.**
+
+| name     | Arguments | Description                                                                                                                                    |
+|----------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| cache    | /         | Caches result of previous nodes into memory. Useful when the pipeline is executed multiple times. Be careful with memory intensive operations. |
+| clone    | /         | Deep clone dataset                                                                                                                             |
 
 # Install
 
@@ -271,18 +277,18 @@ You can see examples for every operation in the [dedicated notebook](./examples/
 
 ## ELKDataset
 
-| Name              | Type                  | Required | Default    | Description                                                      |
-|-------------------|-----------------------|----------|------------|------------------------------------------------------------------|
-| **path**          | Union[List[str], str] | Yes      |            | The local path to a query written in JSON                        |
-| **host**          | str                   | Yes      |            | Elastic host URL                                                 |
-| **port**          | str                   | Yes      |            | Elastic host port                                                |
-| **username**      | str                   | Yes      |            | Elastic authentication username                                  |
-| **password**      | str                   | Yes      |            | Elastic authentication password                                  |
-| **index**         | str                   | Yes      |            | Elastic index to query                                           |
-| **start_isodate** | str (ISO datetime)    | Yes      |            | Elastic start date range with format: "2021-09-15T10:00:00.000Z" |
-| **end_isodate**   | str (ISO datetime)    | Yes      |            | Elastic end date range with format: "2021-09-15T10:00:00.000Z"   |
-| **date_field**    | str                   | No       | @timestamp | Elastic date field. Can be nested into list, eg. "messages.date" |
-| **date_field_separator** | str            | No       | .          | Separator for date_field used to split the path. Use different ones to NOT split and consider date_field as single field |
+| Name                     | Type                  | Required | Default    | Description                                                                                                              |
+|--------------------------|-----------------------|----------|------------|--------------------------------------------------------------------------------------------------------------------------|
+| **path**                 | Union[List[str], str] | Yes      |            | The local path to a query written in JSON                                                                                |
+| **host**                 | str                   | Yes      |            | Elastic host URL                                                                                                         |
+| **port**                 | str                   | Yes      |            | Elastic host port                                                                                                        |
+| **username**             | str                   | Yes      |            | Elastic authentication username                                                                                          |
+| **password**             | str                   | Yes      |            | Elastic authentication password                                                                                          |
+| **index**                | str                   | Yes      |            | Elastic index to query                                                                                                   |
+| **start_isodate**        | str (ISO datetime)    | Yes      |            | Elastic start date range with format: "2021-09-15T10:00:00.000Z"                                                         |
+| **end_isodate**          | str (ISO datetime)    | Yes      |            | Elastic end date range with format: "2021-09-15T10:00:00.000Z"                                                           |
+| **date_field**           | str                   | No       | @timestamp | Elastic date field. Can be nested into list, eg. "messages.date"                                                         |
+| **date_field_separator** | str                   | No       | .          | Separator for date_field used to split the path. Use different ones to NOT split and consider date_field as single field |
 
 **Returned element type**: ```dict```. Each element is a document matching the given query.
 
