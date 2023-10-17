@@ -243,7 +243,7 @@ class Dataset(ProcessingNodeSequential, ABC):
     def sampling(self, p: float, seed: int = 42, name: str = 'sampling') -> DatasetNode:
         return self.add_successor(Sampling, p=p, seed=seed, name=name)
 
-    def unique(self, by: Callable, name: str = 'unique') -> DatasetNode:
+    def unique(self, by: Callable = lambda x: x, name: str = 'unique') -> DatasetNode:
         return self.add_successor(Unique, get_field=by, name=name)
 
     def map(self, f: Callable, name: str = 'map') -> DatasetNode:
