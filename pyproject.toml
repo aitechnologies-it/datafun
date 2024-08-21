@@ -1,6 +1,24 @@
 [build-system]
-requires = [
-    "setuptools",
-    "wheel"
-]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "datafun"
+authors = [
+    { name = "Diego Giorgini, Luigi Di Sotto, Saeed Choobani", email = "diego.giorgini@aitechnologies.it" }
+]
+description = "datafun brings the fun back to data pipelines"
+version = "0.5.1"
+requires-python = ">=3.8"
+dependencies = [
+    "backoff",
+    "pydlib",
+    "tqdm",
+    "google-cloud-storage",
+    "elasticsearch<8",
+    "requests"
+]
+dynamic = ["readme"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"]}
