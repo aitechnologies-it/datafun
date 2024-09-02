@@ -312,7 +312,7 @@ class DatasetSource(Dataset):
 
     def __call__(self, stream: Stream, **kwargs) -> Generator[Stream, None, None]:
         if not isinstance(stream, StartOfStream):
-            raise TypeError(f"Source datasets only process StartOfStream requests.")
+            raise TypeError("Source datasets only process StartOfStream requests.")
 
         # propagate StartOfStream
         _ = self.forward(stream)
@@ -683,7 +683,7 @@ class CacheDatasetSource(DatasetSource):
 
     def _generate_examples(self) -> Generator[tuple, None, None]:
         # Restart called after a keyboard interrupt in the middle of a generation
-        if self.cached_data != [] and self.finished == False:
+        if self.cached_data != [] and self.finished is False:
             self.cached_data = []
 
         if self.cached_data == []:
@@ -1014,11 +1014,11 @@ class Aggregate(DatasetNode):
         **kwargs,
     ):
         if not isinstance(init, Callable):
-            raise TypeError(f"Aggregate: Argument init is not a function")
+            raise TypeError("Aggregate: Argument init is not a function")
         if not isinstance(agg, Callable):
-            raise TypeError(f"Aggregate: Argument agg is not a function")
+            raise TypeError("Aggregate: Argument agg is not a function")
         if not isinstance(agg, Callable):
-            raise TypeError(f"Aggregate: Argument reduce is not a function")
+            raise TypeError("Aggregate: Argument reduce is not a function")
 
         super().__init__(
             function=agg,

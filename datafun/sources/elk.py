@@ -57,7 +57,7 @@ class ELKDataset(DatasetSource):
             hits = dl.get(res, 'hits.hits', default=[])
 
             old_scroll_id = dl.get(res, '_scroll_id')
-            while (scroll_sz := len(hits)) > 0:
+            while len(hits) > 0:
                 # iterate over the document hits for each 'scroll'
                 for doc in hits:  # type: ignore
                     yield doc
@@ -75,6 +75,7 @@ class ELKDataset(DatasetSource):
                     hits = []
 
             self.es.clear_scroll(scroll_id=old_scroll_id)
+
     def set_time_interval(self, query: dict) -> dict:
         if not isinstance(query, dict):
             raise ValueError(f"query must be a dict, not {type(query)}.")
@@ -89,7 +90,7 @@ class ELKDataset(DatasetSource):
 
         xs = dl.get(query, 'query.bool.filter')
         if xs is None:
-            raise ValueError(f'Field query.bool.filter has not been found.')
+            raise ValueError('Field query.bool.filter has not been found.')
         if not isinstance(xs, List):
             raise TypeError(f'Field query.bool.filter must be of type List, but found of type {type(xs)}')
 
