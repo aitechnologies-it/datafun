@@ -74,6 +74,7 @@ class ELKDataset(DatasetSource):
                     # _scroll_id is None, because the response is not "paginated"
                     hits = []
 
+            self.es.clear_scroll(scroll_id=old_scroll_id)
     def set_time_interval(self, query: dict) -> dict:
         if not isinstance(query, dict):
             raise ValueError(f"query must be a dict, not {type(query)}.")
