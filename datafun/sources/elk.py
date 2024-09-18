@@ -31,6 +31,8 @@ class ELKDatasetConfig:
 
 class ELKDataset(DatasetSource):
     def __init__(self, config: ELKDatasetConfig, **kwargs):
+        if 'date_field_separator' in kwargs:
+            print("WARN: date_field_separator is deprecated, the separator is now automatically inferred")
         super().__init__(config=config, **kwargs)
 
         self.es = Elasticsearch(
@@ -94,11 +96,17 @@ class ELKDataset(DatasetSource):
         if not isinstance(xs, List):
             raise TypeError(f'Field query.bool.filter must be of type List, but found of type {type(xs)}')
 
-        sep = self.config.date_field_separator
+        path_sep_alts = ['/', '//--@@--//']
+        path_sep = '.'
+        while path_sep in self.config.date_field:
+            try:
+                path_sep = path_sep_alts.pop(0)
+            except Exception as e:
+                raise ValueError(f'Field {self.config.date_field} contains invalid characters. Exception: {e}')
         for idx, obj in enumerate(xs):
             if dl.has(obj, "range"):
-                obj = dl.update(obj, f"range{sep}{self.config.date_field}{sep}gte", value=self.config.start_isodate, sep=sep)
-                obj = dl.update(obj, f"range{sep}{self.config.date_field}{sep}lte", value=self.config.end_isodate, sep=sep)
+                obj = dl.update(obj, f"range{path_sep}{self.config.date_field}{path_sep}gte", value=self.config.start_isodate, sep=path_sep)
+                obj = dl.update(obj, f"range{path_sep}{self.config.date_field}{path_sep}lte", value=self.config.end_isodate, sep=path_sep)
                 if not obj:
                     raise ValueError(f'{self.config.date_field}.lte or {self.config.date_field}.lte fields can\'t be updated, e.g. check '
                                     'if they exist in the query.')
