@@ -55,28 +55,36 @@ class ELKDataset(DatasetSource):
 
     def _generate_examples(self) -> Generator[dict, None, None]:
         for Q in self.Qs:
-            res = self._search(index=self.config.index, body=json.dumps(Q), scroll='20s')
-            hits = dl.get(res, 'hits.hits', default=[])
+            res = None
+            old_scroll_id = None
+            try:
+                res = self._search(index=self.config.index, body=json.dumps(Q), scroll='20s')
+                hits = dl.get(res, 'hits.hits', default=[])
 
-            old_scroll_id = dl.get(res, '_scroll_id')
-            while len(hits) > 0:
-                # iterate over the document hits for each 'scroll'
-                for doc in hits:  # type: ignore
-                    yield doc
+                old_scroll_id = dl.get(res, '_scroll_id')
+                while len(hits) > 0:
+                    # iterate over the document hits for each 'scroll'
+                    for doc in hits:  # type: ignore
+                        yield doc
 
-                # make a request using the Scroll API
-                try:
-                    res = self._scroll(scroll_id=old_scroll_id, scroll='20s')
-                    hits = dl.get(res, 'hits.hits')
-                    # keep track of past scroll_id
-                    old_scroll_id = dl.get(res, '_scroll_id')
-                except exceptions.NotFoundError:
-                    hits = []
-                except exceptions.RequestError:
-                    # _scroll_id is None, because the response is not "paginated"
-                    hits = []
-
-            self.es.clear_scroll(scroll_id=old_scroll_id)
+                    # make a request using the Scroll API
+                    try:
+                        res = self._scroll(scroll_id=old_scroll_id, scroll='20s')
+                        hits = dl.get(res, 'hits.hits')
+                        # keep track of past scroll_id
+                        old_scroll_id = dl.get(res, '_scroll_id')
+                    except exceptions.NotFoundError:
+                        hits = []
+                    except exceptions.RequestError:
+                        # _scroll_id is None, because the response is not "paginated"
+                        hits = []
+            finally:
+                if old_scroll_id is not None:
+                    try:
+                        self.es.clear_scroll(scroll_id=old_scroll_id)
+                    except Exception:
+                        # Clear failures should not hide the original exception
+                        pass
 
     def set_time_interval(self, query: dict) -> dict:
         if not isinstance(query, dict):
